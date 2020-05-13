@@ -4,6 +4,9 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.Circle;
+import com.badlogic.gdx.math.Intersector;
+import com.badlogic.gdx.math.Rectangle;
 
 import java.util.Random;
 
@@ -17,6 +20,8 @@ public class FlappyBird extends ApplicationAdapter {
     private int flapState = 0;
     private float birdY = 0;
     private float velocity = 0;
+    private Circle birdCircle;
+
     private int gameState = 0;
 
     private Texture topTube;
@@ -29,6 +34,8 @@ public class FlappyBird extends ApplicationAdapter {
     private float[] tubeX = new float[numberOfTubes];
     private float[] tubeOffset = new float[numberOfTubes];
     private float distanceBetweenTubes;
+    private Rectangle[] topTubeRectangles;
+    private Rectangle[] bottomTubeRectangles;
 
     private float screenWidth;
     private float screenHeight;
@@ -36,6 +43,11 @@ public class FlappyBird extends ApplicationAdapter {
     @Override
     public void create() {
         batch = new SpriteBatch();
+
+        birdCircle = new Circle();
+        topTubeRectangles = new Rectangle[numberOfTubes];
+        bottomTubeRectangles = new Rectangle[numberOfTubes];
+
         background = new Texture("bg.png");
         birds = new Texture[2];
         birds[0] = new Texture("bird.png");
@@ -52,7 +64,7 @@ public class FlappyBird extends ApplicationAdapter {
         for (int i = 0; i < numberOfTubes; i++) {
             tubeOffset[i] = (randomGenerator.nextFloat() - 0.5f) * (screenHeight - gap - 200);
             // first tube in the center, other one in the half of the screen, then 1 screen away...
-            tubeX[i] = screenWidth / 2 - topTube.getWidth() / 2 + i * distanceBetweenTubes;
+            tubeX[i] = screenWidth / 2 - topTube.getWidth() / 2 + screenWidth + i * distanceBetweenTubes;
         }
 
         birdY = screenHeight / 2 - birds[0].getHeight() / 2;
@@ -78,6 +90,7 @@ public class FlappyBird extends ApplicationAdapter {
         defineBirdFlapState();
         drawBird();
         endDrawing();
+        drawCircleShape();
     }
 
     private void drawBackground() {
@@ -132,11 +145,34 @@ public class FlappyBird extends ApplicationAdapter {
             // redraw tube when it is passed the screen
             if (tubeX[i] < -topTube.getWidth()) {
                 tubeX[i] += numberOfTubes * distanceBetweenTubes;
+                tubeOffset[i] = (randomGenerator.nextFloat() - 0.5f) * (screenHeight - gap - 200);
             }
 
             tubeX[i] -= tubeVelocity;
             batch.draw(topTube, tubeX[i], screenHeight / 2 + gap / 2 + tubeOffset[i]);
             batch.draw(bottomTube, tubeX[i], screenHeight / 2 - gap / 2 - bottomTube.getHeight() + tubeOffset[i]);
+
+            drawTubeShapesAndCheckForCollision();
         }
+    }
+
+    private void drawTubeShapesAndCheckForCollision() {
+        for (int i = 0; i < numberOfTubes; i++) {
+            topTubeRectangles[i] = new Rectangle();
+            topTubeRectangles[i].set(tubeX[i], screenHeight / 2 + gap / 2 + tubeOffset[i], topTube.getWidth(), topTube.getHeight());
+
+            bottomTubeRectangles[i] = new Rectangle();
+            bottomTubeRectangles[i].set(tubeX[i], screenHeight / 2 - gap / 2 - bottomTube.getHeight() + tubeOffset[i], bottomTube.getWidth(), bottomTube.getHeight());
+
+            // check for collision
+            if (Intersector.overlaps(birdCircle, topTubeRectangles[i]) ||
+                    Intersector.overlaps(birdCircle, bottomTubeRectangles[i])) {
+                Gdx.app.log("collision", "yes!");
+            }
+        }
+    }
+
+    private void drawCircleShape() {
+        birdCircle.set(screenWidth / 2, birdY + birds[flapState].getHeight() / 2, birds[flapState].getWidth() / 2);
     }
 }
